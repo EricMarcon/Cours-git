@@ -37,7 +37,7 @@ Library <- function(Packages) {
   invisible(sapply(Packages, InstallAndLoad))
 }
 # Ajouter les packages nécessaires ici
-Library(c("kableExtra", "tidyverse"))
+Library(c("kableExtra", "tidyverse", "secret"))
 ```
 
 <!-- Début du document ci-dessous --> 
@@ -58,4 +58,175 @@ Une solution peu satisfaisante consiste à ne pas inclure les données au projet
 Une meilleure solution est de les crypter, en permettant à certains utilisateurs de les décrypter.
 C'est l'objet du package _secret_.
 
+Un coffre-fort (dossier `vault`) est créé dans le projet.
+Il contient la liste des utilisateurs autorisés à décrypter une partie de son contenu : ces utilisateurs sont identifiés par leur clé publique.
+Les utilisateurs utilisent ensuite leur clé privée pour le décryptage.
+
+
+## Préalables
+
+Chaque utilisateur du coffre-fort doit détenir une clé privée et la clé publique correspondante.
+Ces clés sont normalement stockées dans le dossier `~/.ssh`, quel que soit le système d'exploitation, mais l'emplacement du dossier personnel `~` est ambiguë sous Windows : pour R, c'est le dossier `Documents`, mais pour d'autres logiciels, c'est le dossier racine de l'utilisateur, parent de `Documents`.
+
+### Génération d'une paire de clés
+
+Les clés sont générées par le logiciel _ssh_, installé avec _git_ ou par défaut sous Linux.
+Pour générer une clé au format RSA :
+
+- exécuter, dans _Git Bash_ : ```ssh-keygen -t rsa -b 4096 -C "my_email@example.com" ``` en remplaçant le modèle d'adresse de messagerie par son adresse réelle.
+
+- Accepter l'emplacement de fichier par défaut pour stocker la clé.
+
+- Saisir une phrase de validation (mot de passe) pour sécuriser l'utilisation de la clé.
+
+La clé privée peut être utilisée pour sécuriser de nombreuses applications.
+Elle doit être sauvegardée dans un emplacement sûr et ne pas être accessible par les tiers.
+La clé publique, `~/.ssh/id_rsa.pub`, peut être diffusée.
+
+Sous Windows, le répertoire `~` correspond à `Documents` mais _Git Bash_ a créé le dossier `.ssh` à la racine du profil de l'utilisateur.
+Il faut donc déplacer le dossier (avec l'explorateur de fichiers) dans `Documents`.
+
+Le bon fonctionnement de la clé peut être testé.
+
+```{r, eval=FALSE}
+library("secret")
+local_key()
+```
+
+L'appel à la fonction `local_key()` fait apparaître une fenêtre pour la saisie du mot de passe : elle ne peut être utilisé qu'en mode interactif sous R.
+
+
+### Copie de la clé publique sur GitHub
+
+Sur le site _GitHub_, après s'être authentifié, afficher les paramètres du compte (menu déroulant _Settings_), sélectionner _SSH anfd GPG keys_ et cliquer sur le bouton _New SSH Key_.
+Donner un nom à la clé (par exemple "Principale") coller le contenu de `~/.ssh/id_rsa.pub` dans le formulaire.
+
+Cette clé pourra être récupérée par le créateur d'un coffre-fort pour donner des droits à un utilisateur GitHub.
+
+
+
+## Utilisation d'un coffre-fort
+
+### Création d'un coffre-fort
+
+Créer le coffre-fort du projet avant d'y déposer des données.
+```{r}
+# Coffre-fort dans un dossier temporaire pour le cours.
+vault <- file.path(tempdir(), ".vault")
+create_vault(vault)
+```
+
+L'opération a simplement créé le dossier `vault` avec un sous-dossier pour les utilisateurs et un autre pour les données (`secrets`).
+
+
+### Ajout d'utilisateurs
+
+La première opération à réaliser est de s'ajouter soi-même à la liste des utilisateurs, au choix :
+
+- à partir de sa clé publique, locale (`~/.ssh/id_rsa.pub`) :
+```{r}
+library("openssl")
+add_user(email="e.marcon@free.fr", public_key=read_pubkey("~/.ssh/id_rsa.pub"), vault = vault)
+# Vérification
+list_users(vault = vault)
+# Suppression 
+delete_user("e.marcon@free.fr", vault = vault)
+```
+- à partir de son identifiant _GitHub_ :
+```{r}
+# Ajout
+add_github_user("EricMarcon", vault=vault)
+# Vérification
+list_users(vault = vault)
+```
+
+
+### Ajout de données
+
+Les données sont appelées _secrets_.
+Un secret contient une seule variable R mais doit recevoir un nom.
+Les utilisateurs ayant accès au secret sont déclarés par leur nom, dans un vecteur.
+
+```{r, eval=FALSE}
+MySecret <- "Texte secret"
+add_secret("MonSecret", value = MySecret, users = "github-EricMarcon", vault = vault)
+```
+
+
+### Liste des secrets
+
+La liste des secrets, celle des utilisateurs et celle des propriétaire d'un secret sont disponibles.
+
+```{r}
+list_secrets(vault = vault)
+list_users(vault = vault)
+list_owners("MonSecret", vault = vault)
+```
+
+
+### Décryptage
+
+Pour décrypter les données, il faut disposer d'une clé privée correspondant à une des clés publiques autorisées.
+
+```{r, eval=FALSE}
+get_secret("MonSecret", key = local_key(), vault = vault)
+```
+
+Ce code ne peut être exécuté qu'en mode interactif pour saisir le mot de passe de la clé privée.
+
+
+## Utilisation réelle
+
+Le propriétaire du projet contenant les données confidentielles crée un coffre-fort et y stocke les données avant de pousser le projet sur _GitHub_.
+
+Le décryptage des données nécessite une clé privée.
+Les clés privées des utilisateurs doivent impérativement être protégées par mot de passe : l'accès au fichier par un tiers est toujours possible sur le disque dur ou dans le cadre d'une sauvegarde.
+L'exécution du code R en mode non-interactif (le tricotage d'un fichier Rmarkdown par exemple) ne permet pas la saisie de ce mot de passe.
+La bonne pratique consiste à créer une paire de clé spécifique à chaque projet dont la clé privée, non protégée par mot de passe, ne sera pas stockée sur GitHub.
+La clé privée non protégée permet de tricoter le fichier sur le poste de travail du propriétaire du projet.
+Elle peut être distribuée aux utilisateurs ayant besoin de reproduire l'exécution du code (par exemple une salle de classe), ce qui est plus simple que l'ajout de chaque utilisateur dans le coffre-fort.
+Elle est vulnérable : elle peut par exemple être diffusée par un étudiants, mais les conséquences d'une compromission de la clé sont limitées au décodage des données du projet.
+Il suffit de retirer l'utilisateur correspondant du coffre-fort et de régénérer une nouvelle paire de clé pour sécuriser à nouveau le projet.
+
+La création de la clé du projet a lieu dans _Git Bash_ avec la commande ```ssh-keygen -t rsa -b 4096```.
+Spécifier le chemin du fichier : il doit être placé dans le dossier du projet son nom doit être celui du projet RStudio suffixé par `_rsa` (exemple : `Cours-git_rsa`).
+Ne pas saisir de mot de passe.
+Ajouter une ligne `*_rsa` dans le fichier `.gitignore` pour ne pas stocker la clé privée sur dans le dépôt git.
+
+La clé publique est ajoutée à la liste des utilisateurs du coffre-fort et les secrets sont partagés.
+
+Le script suivant permet de créer un coffre-fort dont les données sont lisibles avec la clé privée du projet.
+
+```{r, eval=FALSE}
+# Création du coffre-fort
+vault2 <- file.path(tempdir(), ".vault")
+create_vault(vault2)
+# Utilisateur correspondant au projet
+ClePubliqueDuProjet <- read_pubkey("Cours-git_rsa.pub")
+add_user("Cours-git", public_key = ClePubliqueDuProjet, vault = vault2)
+# Propriétaire du projet
+add_github_user("EricMarcon", vault=vault2)
+# Données
+MySecret <- "Texte secret 2"
+# Création du secret, avec deux utilisateurs : le propriétaire du projet et l'utilisateur correspondant au projet
+add_secret("MonSecret", value = MySecret, users = c("github-EricMarcon", "Cours-git"), vault = vault2)
+# Vérification
+list_owners("MonSecret", vault = vault2)
+# Décryptage, sans interaction
+get_secret("MonSecret", key = read_key("Cours-git_rsa"), vault = vault2)
+```
+
+Le secret peut être lu avec la clé du projet, qui ne nécessite pas d'interaction.
+
+
+## Partage du secret
+
+De nouveaux utilisateurs peuvent être ajoutés au coffre-fort à tout moment et un secret peut être partagé avec eux par la fonction `share_secret`.
+Cette commande nécessite une clé _privée_ d'un propriétaire du secret parce qu'elle décrypte les données avant de les encrypter à nouveau avec leurs nouvelles autorisations.
+
+La fonction `unshare_secret` permet de retirer des utilisateurs du partage.
+
+
+Enfin, la commande `update_secret` permet de mettre à jour une donnée cryptée. 
+Elle nécessite une clé privée.
 

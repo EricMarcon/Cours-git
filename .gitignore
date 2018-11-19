@@ -150,3 +150,6 @@ TSWLatexianTemp*
 # Extras
 .#Extra
 *.xlsx
+
+# Private keys
+*_rsa
