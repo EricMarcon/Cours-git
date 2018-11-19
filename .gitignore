@@ -146,6 +146,7 @@ TSWLatexianTemp*
 # Bookdown
 /*_files/
 /*_cache/
+/libs/
 
 # Extras
 .#Extra
@@ -153,3 +154,5 @@ TSWLatexianTemp*
 
 # Private keys
 *_rsa
+# Vaults
+vault*/
