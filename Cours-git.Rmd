@@ -49,6 +49,79 @@ _git_ est devenu l'outil standard de contrôle de source.
 Il est complètement intégré à RStudio, ce qui le rend simple à utiliser au-delà de son audience historique de développeurs.
 Enfin, _GitHub_ est devenue la plateforme de partage de code dominante, avec des services haut de gamme et gratuits comme la fourniture d'un site web de présentation pour chaque projet, l'accès à des outils d'intégration continue comme _TravisCI_ et _CodeCov_.
 
+Une documentation détaillée se trouve dans [Happy Git and GitHub for the useR](http://happygitwithr.com/).
+Ce document renvoie aux chapitres de cet ouvrage pour les détails.
+
+# Installation
+
+Le logiciel [_git_](https://git-scm.com/) doit être installé[^1] sur le poste de travail exécutant RStudio.
+
+[^1]: <http://happygitwithr.com/install-git.html>
+
+_git_ fonctionne en tâche de fond sur l'ordinateur après son installation.
+Il sera utilisé dans RStudio et parfois à partir de sa console : _Git Bash_.
+
+```{r R-git, echo=FALSE, out.width='70%'}
+knitr::include_graphics("images/R-git.PNG")
+```
+
+Si _git_ est installé correctement, RStudio le détecte et affiche son chemin dans les options globales.
+
+Il est temps de paramétrer git avec son nom et son adresse en ouvrant une console _Git Bash_ et en tapant les commandes suivantes :
+
+```
+git config --global user.name 'Eric Marcon'
+git config --global user.email 'e.marcon@free.fr'
+```
+
+Il est aussi nécessaire d'ouvrir un compte sur [GitHub](https://github.com)[^2], avec la même adresse de messagerie que celle déclarée localement.
+
+[^2]: <http://happygitwithr.com/github-acct.html>
+
+
+# Projet R sous contrôle de source
+
+Tout projet RStudio peut être passé sous contrôle de source par le menu _Tools/Version Control/Project Setup..._ et en sélectionnant _git_ dans la liste déroulante _Version Control System_.
+
+```{r Project-git, echo=FALSE, out.width='70%'}
+knitr::include_graphics("images/Project-git.PNG")
+```
+
+Une fenêtre supplémentaire _Git_ apparaît dans le même groupe que _Environment._
+
+## Principes
+
+Tout fichier du projet peut être suivi.
+Il doit d'abord être ajouté ; par la suite, il sera pris en compte (_staged_) ou non à chaque livraison (_commit_) des modifications, à réaliser à la fin de chaque séance de travail.
+
+_git_ maintient un historique de toutes les modifications apportées à chaque fichier du projet : l'unité d'information est la ligne dans les fichiers texte.
+
+Pour travailler à plusieurs, rendre un projet visible ou simplement assurer sa sauvegarde, il est nécessaire de le mettre en ligne dans un dépôt, généralement sur la plateforme _GitHub_.
+La synchronisation entre le dépôt GitHub et sa copie locale se fait par la commande _Pull_, la commande _Push_ fonctionne dans l'autre sens.
+
+Une session de travail dans un projet collaboratif commence donc par un _Pull_ pour obtenir localement les modifications faites par les autres membres du projet.
+Après une modification, les changements sont livrés (_commit_) puis remontés sur le dépôt par un _Push_.
+
+## Commencer
+
+La méthode la plus simple consiste à créer un dépôt sur _GitHub_ puis créer un projet dans RStudio à partir de ce dépôt[^1].
+
+[^1]: http://happygitwithr.com/new-github-first.html
+
+Si le projet existe déjà mais n'est pas sous contrôle de source, la même méthode s'applique : il suffit de coller l'ensemble des fichiers préexistants dans le nouveau projet[^2].
+
+[^2]: http://happygitwithr.com/existing-github-first.html
+
+Si le projet existe déjà et est sous contrôle de source, des précautions sont nécessaires pour ne pas perdre son historique[^3]. 
+
+[^3]: http://happygitwithr.com/existing-github-last.html#make-and-connect-a-github-repo-option-2
+
+
+## .gitignore
+
+Les projets R génèrent de nombreux fichiers de travail, qui ne doivent pas être pris en compte par _git_.
+Le fichier `.gitignore` permet de lister ces fichiers par leur nom ou un masque (exemple : `*.aux` pour les fichiers auxiliaires de LaTeX).
+Dès le début du développement du projet, il faut compléter le fichier `.gitignore` pour éliminer de la fenêtre _Git_ de RStudio tout fichier de statut inconnu (_Status_ affiche deux points d'interrogation) : les fichiers doivent être pris en compte (_staged_) ou ignorés (leur ajout dans `.gitignore` les fait disparaître).
 
 # Données confidentielles dans un dépôt public
 
@@ -109,10 +182,18 @@ Cette clé pourra être récupérée par le créateur d'un coffre-fort pour donn
 
 ### Création d'un coffre-fort
 
+```{r}
+# Suppression des coffres-forts préexistant
+unlink("vault", recursive = TRUE, force = TRUE)
+unlink("vault2", recursive = TRUE, force = TRUE)
+```
+
+
+
 Créer le coffre-fort du projet avant d'y déposer des données.
 ```{r}
-# Coffre-fort dans un dossier temporaire pour le cours.
-vault <- file.path(tempdir(), ".vault")
+# Coffre-fort dans le dossier "vault"
+vault <-  "vault"
 create_vault(vault)
 ```
 
@@ -147,7 +228,7 @@ Les données sont appelées _secrets_.
 Un secret contient une seule variable R mais doit recevoir un nom.
 Les utilisateurs ayant accès au secret sont déclarés par leur nom, dans un vecteur.
 
-```{r, eval=FALSE}
+```{r}
 MySecret <- "Texte secret"
 add_secret("MonSecret", value = MySecret, users = "github-EricMarcon", vault = vault)
 ```
@@ -197,15 +278,15 @@ La clé publique est ajoutée à la liste des utilisateurs du coffre-fort et les
 
 Le script suivant permet de créer un coffre-fort dont les données sont lisibles avec la clé privée du projet.
 
-```{r, eval=FALSE}
+```{r}
 # Création du coffre-fort
-vault2 <- file.path(tempdir(), ".vault")
+vault2 <- "vault2"
 create_vault(vault2)
 # Utilisateur correspondant au projet
 ClePubliqueDuProjet <- read_pubkey("Cours-git_rsa.pub")
 add_user("Cours-git", public_key = ClePubliqueDuProjet, vault = vault2)
 # Propriétaire du projet
-add_github_user("EricMarcon", vault=vault2)
+add_github_user("EricMarcon", vault = vault2)
 # Données
 MySecret <- "Texte secret 2"
 # Création du secret, avec deux utilisateurs : le propriétaire du projet et l'utilisateur correspondant au projet
