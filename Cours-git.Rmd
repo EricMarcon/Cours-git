@@ -1,32 +1,35 @@
 ---
 title: "Contrôle de source avec git"
 author:
-  - name: Eric Marcon
-abstract: >
-  L'objectif du cours est d'utiliser simplement et efficacement git pour le suivi de version et le travail collaboratif avec RStudio.
+- name: Eric Marcon
 date: "`r format(Sys.time(), '%d %B %Y')`"
-pdftoc: yes
-preamble: >
-  \usepackage{textcomp}
-  \DeclareUnicodeCharacter{B0}{\textdegree}
-  \hyphenation{bio-di-ver-si-ty sap-lings}
-lang: french # english
-bibliography: references.bib
 output:
   bookdown::pdf_book:
     base_format: EcoFoG::memo
-    keep_tex: TRUE
+    keep_tex: yes
   bookdown::word_document2: default
-  bookdown::gitbook: 
+  bookdown::html_book:
+    theme: sandstone
+    toc: yes
+    css: toc.css
+  bookdown::gitbook:
     config:
-      download: 
-        - ["Cours-git.pdf", "PDF"]
+      download:
+      - Cours-git.pdf
+      - PDF
+lang: french
+bibliography: references.bib
+pdftoc: yes
+preamble: |
+  \usepackage{textcomp} \DeclareUnicodeCharacter{B0}{\textdegree} \hyphenation{bio-di-ver-si-ty sap-lings}
+abstract: |
+  L'objectif du cours est d'utiliser simplement et efficacement git pour le suivi de version et le travail collaboratif avec RStudio.
 ---
 
-<!-- Options de knitr et de R (librairies, ...) --> 
+
 
 ```{r Options, echo=FALSE, message=FALSE}
-knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(blank=FALSE, width.cutoff=50), out.width='.8\\maxwidth')
+knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(blank=FALSE, width.cutoff=50), out.width='.8\\maxwidth', fig.align='center')
 options(width=50)
 # Installation des packages si nécessaire et chargement
 Library <- function(Packages) {
@@ -40,7 +43,7 @@ Library <- function(Packages) {
 Library(c("kableExtra", "tidyverse", "secret"))
 ```
 
-<!-- Début du document ci-dessous --> 
+
 
 
 # Introduction
@@ -61,11 +64,11 @@ Le logiciel [_git_](https://git-scm.com/) doit être installé[^1] sur le poste 
 _git_ fonctionne en tâche de fond sur l'ordinateur après son installation.
 Il sera utilisé dans RStudio et parfois à partir de sa console : _Git Bash_.
 
-```{r R-git, echo=FALSE, out.width='70%'}
+```{r R-git, echo=FALSE, out.width='70%', fig.cap="Paramètres globaux de R"}
 knitr::include_graphics("images/R-git.PNG")
 ```
 
-Si _git_ est installé correctement, RStudio le détecte et affiche son chemin dans les options globales.
+Si _git_ est installé correctement, RStudio le détecte et affiche son chemin dans les options globales (Figure \@ref(fig:R-git)).
 
 Il est temps de paramétrer git avec son nom et son adresse en ouvrant une console _Git Bash_ et en tapant les commandes suivantes :
 
@@ -81,9 +84,9 @@ Il est aussi nécessaire d'ouvrir un compte sur [GitHub](https://github.com)[^2]
 
 # Projet R sous contrôle de source
 
-Tout projet RStudio peut être passé sous contrôle de source par le menu _Tools/Version Control/Project Setup..._ et en sélectionnant _git_ dans la liste déroulante _Version Control System_.
+Tout projet RStudio peut être passé sous contrôle de source par le menu _Tools/Version Control/Project Setup..._ et en sélectionnant _git_ dans la liste déroulante _Version Control System_ (Figure \@ref(fig:Project-git)).
 
-```{r Project-git, echo=FALSE, out.width='70%'}
+```{r Project-git, echo=FALSE, out.width='70%', fig.cap="Paramètres du projet"}
 knitr::include_graphics("images/Project-git.PNG")
 ```
 
@@ -266,8 +269,8 @@ L'exécution du code R en mode non-interactif (le tricotage d'un fichier Rmarkdo
 La bonne pratique consiste à créer une paire de clé spécifique à chaque projet dont la clé privée, non protégée par mot de passe, ne sera pas stockée sur GitHub.
 La clé privée non protégée permet de tricoter le fichier sur le poste de travail du propriétaire du projet.
 Elle peut être distribuée aux utilisateurs ayant besoin de reproduire l'exécution du code (par exemple une salle de classe), ce qui est plus simple que l'ajout de chaque utilisateur dans le coffre-fort.
-Elle est vulnérable : elle peut par exemple être diffusée par un étudiants, mais les conséquences d'une compromission de la clé sont limitées au décodage des données du projet.
-Il suffit de retirer l'utilisateur correspondant du coffre-fort et de régénérer une nouvelle paire de clé pour sécuriser à nouveau le projet.
+Elle est vulnérable : elle peut par exemple être diffusée par un étudiant, mais les conséquences d'une compromission de la clé sont limitées au décodage des données du projet.
+Il suffit de retirer l'utilisateur correspondant du coffre-fort et de régénérer une nouvelle paire de clés pour sécuriser à nouveau le projet.
 
 La création de la clé du projet a lieu dans _Git Bash_ avec la commande ```ssh-keygen -t rsa -b 4096```.
 Spécifier le chemin du fichier : il doit être placé dans le dossier du projet son nom doit être celui du projet RStudio suffixé par `_rsa` (exemple : `Cours-git_rsa`).
@@ -279,6 +282,8 @@ La clé publique est ajoutée à la liste des utilisateurs du coffre-fort et les
 Le script suivant permet de créer un coffre-fort dont les données sont lisibles avec la clé privée du projet.
 
 ```{r}
+library("secret")
+library("openssl")
 # Création du coffre-fort
 vault2 <- "vault2"
 create_vault(vault2)
@@ -306,7 +311,6 @@ De nouveaux utilisateurs peuvent être ajoutés au coffre-fort à tout moment et
 Cette commande nécessite une clé _privée_ d'un propriétaire du secret parce qu'elle décrypte les données avant de les encrypter à nouveau avec leurs nouvelles autorisations.
 
 La fonction `unshare_secret` permet de retirer des utilisateurs du partage.
-
 
 Enfin, la commande `update_secret` permet de mettre à jour une donnée cryptée. 
 Elle nécessite une clé privée.
