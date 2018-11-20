@@ -11,6 +11,10 @@ if (!dir.exists("docs")) dir.create("docs")
 htmlFiles <- list.files(pattern="*.html")
 if (length(htmlFiles) > 0)
   file.rename(from=htmlFiles, to=paste("docs/", htmlFiles, sep=""))
+# css
+cssFiles <- list.files(pattern="*.css")
+if (length(cssFiles) > 0)
+  file.copy(from=cssFiles, to=paste("docs/", cssFiles, sep=""), overwrite=TRUE)
 # Figures
 html_filesDir <- list.files(pattern="*_files")
 if (length(html_filesDir) > 0) {
