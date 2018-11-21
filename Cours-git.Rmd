@@ -3,20 +3,19 @@ title: "Contrôle de source avec git"
 author:
 - name: Eric Marcon
 date: "`r format(Sys.time(), '%d %B %Y')`"
+always_allow_html: yes
 output:
   bookdown::pdf_book:
     base_format: EcoFoG::memo
     keep_tex: yes
   bookdown::word_document2: default
-  bookdown::html_book:
+  bookdown::html_document2:
     theme: sandstone
     toc: yes
-    css: toc.css
+    toc_float: yes
   bookdown::gitbook:
     config:
-      download:
-      - Cours-git.pdf
-      - PDF
+      download: null
 lang: french
 bibliography: references.bib
 pdftoc: yes
@@ -25,8 +24,6 @@ preamble: |
 abstract: |
   L'objectif du cours est d'utiliser simplement et efficacement git pour le suivi de version et le travail collaboratif avec RStudio.
 ---
-
-
 
 ```{r Options, echo=FALSE, message=FALSE}
 knitr::opts_chunk$set(echo = TRUE, tidy=TRUE, tidy.opts=list(blank=FALSE, width.cutoff=50), out.width='.8\\maxwidth', fig.align='center')
@@ -42,8 +39,6 @@ Library <- function(Packages) {
 # Ajouter les packages nécessaires ici
 Library(c("kableExtra", "tidyverse", "secret"))
 ```
-
-
 
 
 # Introduction
@@ -159,8 +154,17 @@ La clé privée peut être utilisée pour sécuriser de nombreuses applications.
 Elle doit être sauvegardée dans un emplacement sûr et ne pas être accessible par les tiers.
 La clé publique, `~/.ssh/id_rsa.pub`, peut être diffusée.
 
-Sous Windows, le répertoire `~` correspond à `Documents` mais _Git Bash_ a créé le dossier `.ssh` à la racine du profil de l'utilisateur.
-Il faut donc déplacer le dossier (avec l'explorateur de fichiers) dans `Documents`.
+Sous Windows, le répertoire `~` correspond à `Documents` dans R (vérification : taper `normalizePath("~")` dans la console R) alors qu'il correspond à la racine du profil de l'utilisateur pour les applications portées depuis Unix (taper `ls -al ~` dans le Terminal de RStudio).
+_Git Bash_ a donc créé le dossier `.ssh` à la racine du profil de l'utilisateur, où R ne le trouvera pas.
+
+Plusieurs solutions sont envisageables :
+
+- modifier le code R pour aller chercher les clés dans `~/../`, mais le code ne sera plus portable entre systèmes d'exploitation.
+
+- Dupliquer le dossier `.ssh` (avec l'explorateur de fichiers) dans `Documents`. 
+
+- Pour ne pas dupliquer les fichiers, créer un lien symbolique qui fera pointer le dossier apparent `.ssh` dans `Documents` vers le dossier réél. Pour celà, exécuter dans une invite de commande lancée en tant qu'administrateur : `MKLINK /D %HOMEPATH%\Documents\.ssh %HOMEPATH%\.ssh`
+
 
 Le bon fonctionnement de la clé peut être testé.
 
